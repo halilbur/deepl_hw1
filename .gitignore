@@ -173,3 +173,13 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 BCI_dataset.zip
+__pycache__/
+antbee/
+BCI_dataset/
+logs/
+models/
+*.png
+*.txt
+*.pdf
+*.pptx
+*.zip
