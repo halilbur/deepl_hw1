@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -29,13 +28,13 @@ class BCICNN(nn.Module):
         
         # Dense layers as required: 3 layers with 64, 128, 256 neurons
         self.fc1 = nn.Linear(feature_size, 256)
-        self.dropout1 = nn.Dropout(0.5)
+        self.dropout1 = nn.Dropout(0.6)
         
         self.fc2 = nn.Linear(256, 128)
-        self.dropout2 = nn.Dropout(0.5)
+        self.dropout2 = nn.Dropout(0.6)
         
         self.fc3 = nn.Linear(128, 64)
-        self.dropout3 = nn.Dropout(0.5)
+        self.dropout3 = nn.Dropout(0.6)
         
         # Output layer
         self.fc4 = nn.Linear(64, num_classes)

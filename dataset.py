@@ -6,9 +6,10 @@ import re
 from sklearn.model_selection import train_test_split
 
 class BCIDataset(Dataset):
-    def __init__(self, image_paths, transform=None):
+    def __init__(self, image_paths, transform=None, is_training=False):
         self.image_paths = image_paths
         self.transform = transform
+        self.is_training = is_training  # Flag to indicate if this is training data
         
     def __len__(self):
         return len(self.image_paths)
@@ -18,7 +19,6 @@ class BCIDataset(Dataset):
         image = Image.open(img_path).convert('RGB')
         
         # Extract class label from the filename
-        # Example: 00004_train_1+.png -> 1+ -> 1
         filename = os.path.basename(img_path)
         class_label_match = re.search(r'(\d\+|\d)\.(png|jpg|jpeg)', filename)
         if class_label_match:
@@ -35,29 +35,51 @@ class BCIDataset(Dataset):
                 raise ValueError(f"Unknown class label: {class_str}")
         else:
             raise ValueError(f"Could not extract class label from filename: {filename}")
+
+        # Always apply basic preprocessing (resize)
+        resize_transform = transforms.Resize((224, 224))
+        image = resize_transform(image)
         
-        if self.transform:
-            image = self.transform(image)
+        # Apply augmentation only for training data
+        if self.is_training:
+            # Special augmentation for class 0 during training
+            if label == 0:
+                augment_transform = transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=0.5),
+                    transforms.RandomVerticalFlip(p=0.5),
+                    transforms.RandomRotation(30),
+                    transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),
+                    transforms.RandomAffine(degrees=15, translate=(0.15, 0.15), scale=(0.85, 1.15)),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
+                image = augment_transform(image)
+            elif self.transform:
+                image = self.transform(image)
+        else:
+            # For validation/test sets, only apply basic transforms (no augmentation)
+            basic_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+            image = basic_transform(image)
             
         return image, label
-    
+
 def load_dataset(data_dir, batch_size=32, val_split=0.2, num_workers=4):
-    # Define transformations
+    # Define transformations for training only
     train_transform = transforms.Compose([
-        transforms.Resize((224, 224)),  # Resize to a more manageable size for CNN
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(10),
+        # No resize here - we'll handle it in __getitem__    
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomVerticalFlip(p=0.3),  # Add vertical flips
+        transforms.RandomRotation(20),         # Increase rotation range
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
+        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),  # Add translation
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     
-    test_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    
-    # Collect all training images
+    # Collect and split images
     train_dir = os.path.join(data_dir, 'train')
     print(f"Looking for training images in: {train_dir}")
     if not os.path.exists(train_dir):
@@ -75,9 +97,9 @@ def load_dataset(data_dir, batch_size=32, val_split=0.2, num_workers=4):
         train_images, test_size=val_split, random_state=42, stratify=get_labels_from_filenames(train_images)
     )
     
-    # Create datasets
-    train_dataset = BCIDataset(train_imgs, transform=train_transform)
-    val_dataset = BCIDataset(val_imgs, transform=test_transform)
+    # Create datasets with appropriate is_training flag
+    train_dataset = BCIDataset(train_imgs, transform=train_transform, is_training=True)
+    val_dataset = BCIDataset(val_imgs, transform=None, is_training=False)
     
     # Collect all test images
     test_dir = os.path.join(data_dir, 'test')
@@ -92,9 +114,9 @@ def load_dataset(data_dir, batch_size=32, val_split=0.2, num_workers=4):
         raise ValueError(f"No images found in test directory: {test_dir}")
     print(f"Found {len(test_images)} test images")
     
-    test_dataset = BCIDataset(test_images, transform=test_transform)
+    test_dataset = BCIDataset(test_images, transform=None, is_training=False)
     
-    # Create data loaders with specified number of workers
+    # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)

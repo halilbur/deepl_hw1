@@ -3,14 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
-from torchvision import transforms
-
-# Define test data transform
-test_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
 
 def evaluate_model(model, test_loader, device):
     """Evaluate the model on the test set"""

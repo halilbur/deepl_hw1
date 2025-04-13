@@ -19,26 +19,21 @@ def main():
                         help='Mode: train or test')
     args = parser.parse_args()
     
-    # Create directories
     os.makedirs(args.save_dir, exist_ok=True)
     os.makedirs(args.log_dir, exist_ok=True)
     
     print(f"Loading dataset from: {args.data_dir}")
-    
-    # Load data
+
     train_loader, val_loader, test_loader = load_dataset(
         args.data_dir, args.batch_size
     )
     
-    # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    # Initialize model
     model = BCICNN(num_classes=4).to(device)
     
     if args.mode == 'train':
-        # Train the model
         train_model(
             model=model,
             train_loader=train_loader,
@@ -50,7 +45,6 @@ def main():
             log_dir=args.log_dir
         )
         
-        # Evaluate on test set
         print("\nEvaluating on test set...")
         model.load_state_dict(torch.load(os.path.join(args.save_dir, 'best_model.pth')))
         accuracy, report, _ = evaluate_model(model, test_loader, device)
@@ -74,7 +68,6 @@ def main():
         print("\nClassification Report:")
         print(report)
         
-        # Visualize some predictions
         visualize_predictions(model, test_loader, device, num_samples=5)
 
 if __name__ == "__main__":
