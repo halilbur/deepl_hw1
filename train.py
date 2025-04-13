@@ -22,12 +22,13 @@ def train_model(model, train_loader, val_loader, device, num_epochs, learning_ra
     #class_weights = calculate_class_weights(train_labels, device)    
     
     # Manually adjust class weights
-    manual_weights = [2.0, 1.5, 1.0, 1.2]  # Increase weight for class 2+
+    manual_weights = [8.0, 2.0, 1.0, 1.5]  # Increase weight for class 2+
     class_weights = torch.tensor(manual_weights, dtype=torch.float).to(device)
-    print(f"Class Weights: {class_weights}")
+    #print(f"Class Weights: {class_weights}")
 
     # Use class weights in the loss function
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    #criterion = nn.CrossEntropyLoss(weight=class_weights)
+    criterion = FocalLoss(gamma=2.0, alpha=class_weights)  # Adjust gamma and alpha as needed
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
     # Add learning rate scheduler
